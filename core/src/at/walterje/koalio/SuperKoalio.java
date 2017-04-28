@@ -37,6 +37,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.TimeUtils;
 
 /**
  * Super Mario Brothers-like very basic platformer, using a tile map built using <a href="http://www.mapeditor.org/">Tiled</a> and a
@@ -71,6 +72,10 @@ public class SuperKoalio extends ApplicationAdapter {
 
     @Override
     public void create() {
+
+        // box2D playground here.
+        // try to make koala
+
         // load the koala frames, split them, and assign them to Animations
         koalaTexture = new Texture("assets/data/koalio.png");
         TextureRegion[] regions = TextureRegion.split(koalaTexture, 18, 26)[0];
@@ -86,7 +91,7 @@ public class SuperKoalio extends ApplicationAdapter {
         Koala.HEIGHT = 1 / 16f * regions[0].getRegionHeight();
 
         // load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
-        map = new TmxMapLoader().load("assets/data/test.tmx");
+        map = new TmxMapLoader().load("assets/data/level2.tmx");
         renderer = new OrthogonalTiledMapRenderer(map, 1 / 16f);
 
         // create an orthographic camera, shows us 30x20 units of the world
@@ -139,10 +144,24 @@ public class SuperKoalio extends ApplicationAdapter {
         koala.stateTime += deltaTime;
 
         // check input and apply to velocity & state
-        if ((Gdx.input.isKeyPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.grounded) {
-            koala.velocity.y += Koala.JUMP_VELOCITY;
+        // also check for double jump
+        if ((Gdx.input.isKeyJustPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.jumpsRemaining > 0) {
+            koala.velocity.y = Koala.JUMP_VELOCITY;
             koala.state = Koala.State.Jumping;
             koala.grounded = false;
+            koala.jumpsRemaining--;
+        }
+
+        // reset jumps when on ground
+        if (koala.grounded) {
+            koala.jumpsRemaining = 2;
+        }
+
+        // shift to sprint
+        if (Gdx.input.isKeyPressed(Keys.SHIFT_LEFT)) {
+            Koala.MAX_VELOCITY = 30;
+        } else {
+            Koala.MAX_VELOCITY = 10;
         }
 
         if (Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A) || isTouched(0, 0.25f)) {

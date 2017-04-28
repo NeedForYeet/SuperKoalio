@@ -11,6 +11,8 @@ public class Koala {
         static float JUMP_VELOCITY = 40f;
         static float DAMPING = 0.87f;
 
+        int jumpsRemaining = 2;
+
         enum State {
             Standing, Walking, Jumping
         }
@@ -21,4 +23,5 @@ public class Koala {
         float stateTime = 0;
         boolean facesRight = true;
         boolean grounded = false;
+
 }
