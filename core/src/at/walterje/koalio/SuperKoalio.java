@@ -143,54 +143,7 @@ public class SuperKoalio extends ApplicationAdapter {
 
         koala.stateTime += deltaTime;
 
-        // check input and apply to velocity & state
-        // also check for double jump
-        if ((Gdx.input.isKeyJustPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.jumpsRemaining > 0) {
-            koala.velocity.y = Koala.JUMP_VELOCITY;
-            koala.state = Koala.State.Jumping;
-            koala.grounded = false;
-            koala.jumpsRemaining--;
-        }
-
-        // reset jumps when on ground
-        if (koala.grounded) {
-            koala.jumpsRemaining = 2;
-        }
-
-        // shift to sprint
-        if (Gdx.input.isKeyPressed(Keys.SHIFT_LEFT)) {
-            Koala.MAX_VELOCITY = 30;
-        } else {
-            Koala.MAX_VELOCITY = 10;
-        }
-
-        if (Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A) || isTouched(0, 0.25f)) {
-            koala.velocity.x = -Koala.MAX_VELOCITY;
-            if (koala.grounded) koala.state = Koala.State.Walking;
-            koala.facesRight = false;
-        }
-
-        if (Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D) || isTouched(0.25f, 0.5f)) {
-            koala.velocity.x = Koala.MAX_VELOCITY;
-            if (koala.grounded) koala.state = Koala.State.Walking;
-            koala.facesRight = true;
-        }
-
-        if (Gdx.input.isKeyJustPressed(Keys.B))
-            debug = !debug;
-
-        // apply gravity if we are falling
-        koala.velocity.add(0, GRAVITY);
-
-        // clamp the velocity to the maximum, x-axis only
-        koala.velocity.x = MathUtils.clamp(koala.velocity.x,
-                -Koala.MAX_VELOCITY, Koala.MAX_VELOCITY);
-
-        // If the velocity is < 1, set it to 0 and set state to Standing
-        if (Math.abs(koala.velocity.x) < 1) {
-            koala.velocity.x = 0;
-            if (koala.grounded) koala.state = Koala.State.Standing;
-        }
+        koalaMovement();
 
         // multiply by delta time so we know how far we go
         // in this frame
@@ -261,6 +214,57 @@ public class SuperKoalio extends ApplicationAdapter {
         koala.velocity.x *= Koala.DAMPING;
     }
 
+    private void koalaMovement() {
+        // check input and apply to velocity & state
+        // also check for double jump
+        if ((Gdx.input.isKeyJustPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.jumpsRemaining > 0) {
+            koala.velocity.y = Koala.JUMP_VELOCITY;
+            koala.state = Koala.State.Jumping;
+            koala.grounded = false;
+            koala.jumpsRemaining--;
+        }
+
+        // reset jumps when on ground
+        if (koala.grounded) {
+            koala.jumpsRemaining = 2;
+        }
+
+        // shift to sprint
+        if (Gdx.input.isKeyPressed(Keys.SHIFT_LEFT)) {
+            Koala.MAX_VELOCITY = 30;
+        } else {
+            Koala.MAX_VELOCITY = 10;
+        }
+
+        if (Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A) || isTouched(0, 0.25f)) {
+            koala.velocity.x = -Koala.MAX_VELOCITY;
+            if (koala.grounded) koala.state = Koala.State.Walking;
+            koala.facesRight = false;
+        }
+
+        if (Gdx.input.isKeyPressed(Keys.RIGHT) || Gdx.input.isKeyPressed(Keys.D) || isTouched(0.25f, 0.5f)) {
+            koala.velocity.x = Koala.MAX_VELOCITY;
+            if (koala.grounded) koala.state = Koala.State.Walking;
+            koala.facesRight = true;
+        }
+
+        if (Gdx.input.isKeyJustPressed(Keys.B))
+            debug = !debug;
+
+        // apply gravity if we are falling
+        koala.velocity.add(0, GRAVITY);
+
+        // clamp the velocity to the maximum, x-axis only
+        koala.velocity.x = MathUtils.clamp(koala.velocity.x,
+                -Koala.MAX_VELOCITY, Koala.MAX_VELOCITY);
+
+        // If the velocity is < 1, set it to 0 and set state to Standing
+        if (Math.abs(koala.velocity.x) < 1) {
+            koala.velocity.x = 0;
+            if (koala.grounded) koala.state = Koala.State.Standing;
+        }
+    }
+
     private boolean isTouched(float startX, float endX) {
         // Check for touch inputs between startX and endX
         // startX/endX are given between 0 (left edge of the screen) and 1 (right edge of the screen)
@@ -274,13 +278,21 @@ public class SuperKoalio extends ApplicationAdapter {
     }
 
     private void getTiles(int startX, int startY, int endX, int endY, Array<Rectangle> tiles) {
-        TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get("walls");
+        TiledMapTileLayer layerWalls = (TiledMapTileLayer) map.getLayers().get("walls");
+        TiledMapTileLayer layerUnbreakable = (TiledMapTileLayer) map.getLayers().get("unbreakable");
         rectPool.freeAll(tiles);
         tiles.clear();
         for (int y = startY; y <= endY; y++) {
             for (int x = startX; x <= endX; x++) {
-                Cell cell = layer.getCell(x, y);
+                Cell cell = layerWalls.getCell(x, y);
                 if (cell != null) {
+                    Rectangle rect = rectPool.obtain();
+                    rect.set(x, y, 1, 1);
+                    tiles.add(rect);
+                }
+
+                Cell cellUnbreakable = layerUnbreakable.getCell(x, y);
+                if (cellUnbreakable != null) {
                     Rectangle rect = rectPool.obtain();
                     rect.set(x, y, 1, 1);
                     tiles.add(rect);
