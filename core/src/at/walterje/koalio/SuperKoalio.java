@@ -19,7 +19,6 @@ package at.walterje.koalio;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -27,8 +26,6 @@ import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
@@ -38,6 +35,9 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
+import com.badlogic.gdx.utils.TimeUtils;
+
+import java.util.Iterator;
 
 /**
  * Super Mario Brothers-like very basic platformer, using a tile map built using <a href="http://www.mapeditor.org/">Tiled</a> and a
@@ -71,6 +71,10 @@ public class SuperKoalio extends ApplicationAdapter {
     private Enemy enemy2;
     private Enemy enemy3;
     private Enemy enemy4;
+    private Texture bulletTexture;
+
+
+    private Array<Bullet> activeBullets;
 
     private Enemy initEnemy(int x, int y) {
         TextureAtlas textureAtlas = new TextureAtlas("assets/data/alienBlue.atlas");
@@ -117,6 +121,7 @@ public class SuperKoalio extends ApplicationAdapter {
 
     @Override
     public void create() {
+        bulletTexture = new Texture("assets/data/bulletTexture.png");
 
         enemy1 = initEnemy(30, 5);
         enemy2 = initEnemy(45, 5);
@@ -124,6 +129,8 @@ public class SuperKoalio extends ApplicationAdapter {
         enemy4 = initEnemy(175, 3);
 
         koala = initKoala();
+
+        activeBullets = new Array<Bullet>();
 
         // load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
         map = new TmxMapLoader().load("assets/data/level2.tmx");
@@ -133,7 +140,6 @@ public class SuperKoalio extends ApplicationAdapter {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, 30, 20);
         camera.update();
-
 
 
     }
@@ -170,10 +176,85 @@ public class SuperKoalio extends ApplicationAdapter {
         updateEnemy(enemy3, deltaTime);
         updateEnemy(enemy4, deltaTime);
 
+        updateBullets(deltaTime);
+        renderBullets();
+
         renderEnemy(enemy1);
         renderEnemy(enemy2);
         renderEnemy(enemy3);
         renderEnemy(enemy4);
+    }
+
+    private void renderBullets() {
+        Batch batch = renderer.getBatch();
+
+        batch.begin();
+        for (Bullet bullet : activeBullets) {
+            batch.draw(bulletTexture, bullet.position.x, bullet.position.y, bullet.WIDTH, bullet.HEIGHT);
+        }
+        batch.end();
+    }
+
+    private void updateBullets(float deltaTime) {
+        if (deltaTime == 0) return;
+
+        if (deltaTime > 0.1f)
+            deltaTime = 0.1f;
+
+        Iterator<Bullet> iterator = activeBullets.iterator();
+        while (iterator.hasNext()) {
+            Bullet bullet = iterator.next();
+
+            // check for out of bounds
+            if (bullet.position.x < 0 || bullet.position.x > 200) {
+                iterator.remove();
+            }
+
+            moveBullet(bullet);
+
+            bullet.velocity.scl(deltaTime);
+
+            // check for collision
+            if (bullet.getBounds().overlaps(koala.getBounds())) {
+                create();
+            }
+
+            bullet.position.add(bullet.velocity);
+            bullet.velocity.scl(1 / deltaTime);
+
+            // Apply damping to the velocity on the x-axis so we don't
+            // walk infinitely once a key was pressed
+            bullet.velocity.x *= bullet.DAMPING;
+
+            // update its bounds
+            bullet.updateBounds();
+        }
+
+
+    }
+
+    private void spawnBullet(float x, float y, boolean facesRight) {
+        Bullet bullet = new Bullet();
+        bullet.position.x = x;
+        bullet.position.y = y + 0.5f;
+        bullet.WIDTH = 1 / 16f * 10;
+        bullet.HEIGHT = 1 / 16f * 10;
+        bullet.facesRight = facesRight;
+        bullet.setBounds(bullet.WIDTH, bullet.HEIGHT);
+        activeBullets.add(bullet);
+    }
+
+    private void moveBullet(Bullet bullet) {
+        if (bullet.facesRight) {
+            bullet.velocity.x = bullet.MAX_VELOCITY;
+            bullet.facesRight = true;
+        } else {
+            bullet.velocity.x = -bullet.MAX_VELOCITY;
+            bullet.facesRight = false;
+        }
+        // clamp the velocity to the maximum, x-axis only
+        bullet.velocity.x = MathUtils.clamp(bullet.velocity.x,
+                -bullet.MAX_VELOCITY, bullet.MAX_VELOCITY);
     }
 
     /**
@@ -277,6 +358,11 @@ public class SuperKoalio extends ApplicationAdapter {
 
         enemy.stateTime += deltaTime;
 
+        // shoot a bullet every 2 seconds
+        if (TimeUtils.millis() - enemy.lastFireTime > 2000) {
+            spawnBullet(enemy.position.x, enemy.position.y, enemy.facesRight);
+            enemy.lastFireTime = TimeUtils.millis();
+        }
 
         // reset the game if koala collides with an enemy
         if (enemy.getBounds().overlaps(koala.getBounds())) {
