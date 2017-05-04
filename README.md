@@ -11,6 +11,6 @@ Updated functionality:
 Camera properly follows player in all directions  
 Sprinting and sneaking  
 Additional map layer for unbreakable tiles  
-Enemies that shoot bullets in the direction they are facing  
+Moving enemies that shoot bullets in the direction they are facing  
 Goal at the end of the map  
 Player dies when falling below map, touching enemies or bullets
