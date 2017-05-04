@@ -25,6 +25,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
@@ -37,7 +38,6 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
-import com.badlogic.gdx.utils.TimeUtils;
 
 /**
  * Super Mario Brothers-like very basic platformer, using a tile map built using <a href="http://www.mapeditor.org/">Tiled</a> and a
@@ -70,12 +70,32 @@ public class SuperKoalio extends ApplicationAdapter {
     private boolean debug = false;
     private ShapeRenderer debugRenderer;
 
-    @Override
-    public void create() {
+    private Texture enemyTexture;
+    private Animation<TextureRegion> enemyWalk;
+    private float startTime;
+    private Enemy enemy1;
+    private Enemy enemy2;
 
-        // box2D playground here.
-        // try to make koala
+    public Enemy initEnemy(int x, int y) {
+        TextureAtlas textureAtlas = new TextureAtlas("assets/data/alienBlue.atlas");
+        TextureRegion[] textureRegions = new TextureRegion[2];
+        textureRegions[0] = textureAtlas.findRegion("alienBlue_walk1");
+        textureRegions[1] = textureAtlas.findRegion("alienBlue_walk2");
 
+        enemyWalk = new Animation<TextureRegion>(0.2f, textureRegions);
+
+        Enemy enemy = new Enemy();
+
+        enemy.WIDTH = 1 / 16f * 50;
+        enemy.HEIGHT = 1 / 16f * 50;
+
+        enemy.position.set(x, y);
+        enemy.stateTime = 0;
+
+        return enemy;
+    }
+
+    private Koala initKoala() {
         // load the koala frames, split them, and assign them to Animations
         koalaTexture = new Texture("assets/data/koalio.png");
         TextureRegion[] regions = TextureRegion.split(koalaTexture, 18, 26)[0];
@@ -90,6 +110,20 @@ public class SuperKoalio extends ApplicationAdapter {
         Koala.WIDTH = 1 / 16f * regions[0].getRegionWidth();
         Koala.HEIGHT = 1 / 16f * regions[0].getRegionHeight();
 
+        // create the Koala we want to move around the world
+        Koala koala = new Koala();
+        koala.position.set(20, 20);
+        return koala;
+    }
+
+    @Override
+    public void create() {
+
+        enemy1 = initEnemy(30, 5);
+        enemy2 = initEnemy(45, 5);
+
+        koala = initKoala();
+
         // load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
         map = new TmxMapLoader().load("assets/data/level2.tmx");
         renderer = new OrthogonalTiledMapRenderer(map, 1 / 16f);
@@ -99,9 +133,7 @@ public class SuperKoalio extends ApplicationAdapter {
         camera.setToOrtho(false, 30, 20);
         camera.update();
 
-        // create the Koala we want to move around the world
-        koala = new Koala();
-        koala.position.set(20, 20);
+
 
         debugRenderer = new ShapeRenderer();
     }
@@ -118,7 +150,7 @@ public class SuperKoalio extends ApplicationAdapter {
         // update the koala (process input, collision detection, position update)
         updateKoala(deltaTime);
 
-        // let the camera follow the koala, x-axis only
+        // let the camera follow the koala on both axes
         camera.position.x = koala.position.x;
         camera.position.y = koala.position.y;
         camera.update();
@@ -130,11 +162,14 @@ public class SuperKoalio extends ApplicationAdapter {
 
         // render the koala
         renderKoala(deltaTime);
-
         checkBelowGround();
 
-        // render debug rectangles
-        if (debug) renderDebug();
+        // update and render enemies
+        updateEnemy(enemy1, deltaTime);
+        updateEnemy(enemy2, deltaTime);
+
+        renderEnemy(enemy1);
+        renderEnemy(enemy2);
     }
 
     /**
@@ -146,6 +181,7 @@ public class SuperKoalio extends ApplicationAdapter {
             create();
         }
     }
+
 
     private void updateKoala(float deltaTime) {
         if (deltaTime == 0) return;
@@ -226,6 +262,74 @@ public class SuperKoalio extends ApplicationAdapter {
         koala.velocity.x *= Koala.DAMPING;
     }
 
+    private void updateEnemy(Enemy enemy, float deltaTime) {
+        if (deltaTime == 0) return;
+
+        if (deltaTime > 0.1f)
+            deltaTime = 0.1f;
+
+        enemy.stateTime += deltaTime;
+
+        // enemyMovement
+        moveEnemy(enemy);
+
+        // multiply by delta time so we know how far we go
+        // in this frame
+        enemy.velocity.scl(deltaTime);
+
+        // perform collision detection & response, on each axis, separately
+        // if the koala is moving right, check the tiles to the right of it's
+        // right bounding box edge, otherwise check the ones to the left
+        Rectangle enemyRect = rectPool.obtain();
+        enemyRect.set(enemy.position.x, enemy.position.y, enemy.WIDTH, enemy.HEIGHT);
+        int startX, startY, endX, endY;
+        if (enemy.velocity.x > 0) {
+            startX = endX = (int) (enemy.position.x + enemy.WIDTH + enemy.velocity.x);
+        } else {
+            startX = endX = (int) (enemy.position.x + enemy.velocity.x);
+        }
+        startY = (int) (enemy.position.y);
+        endY = (int) (enemy.position.y + enemy.HEIGHT);
+        getTiles(startX, startY, endX, endY, tiles);
+        enemyRect.x += enemy.velocity.x;
+        for (Rectangle tile : tiles) {
+            if (enemyRect.overlaps(tile)) {
+                enemy.velocity.x = 0;
+                //System.out.println("ENEMY COLLIDED WITH WALL");
+                // make enemy face into the other direction
+                enemy.facesRight = !enemy.facesRight;
+                break;
+            }
+        }
+        enemyRect.x = enemy.position.x;
+
+        // check bounds on the bottom
+        startY = endY = (int) (enemy.position.y + enemy.velocity.y);
+
+        startX = (int) (enemy.position.x);
+        endX = (int) (enemy.position.x + enemy.WIDTH);
+        getTiles(startX, startY, endX, endY, tiles);
+        enemyRect.y += enemy.velocity.y;
+        for (Rectangle tile : tiles) {
+            if (enemyRect.overlaps(tile)) {
+                enemy.position.y = tile.y + tile.height;
+                enemy.velocity.y = 0;
+                break;
+            }
+        }
+        rectPool.free(enemyRect);
+
+        // unscale the velocity by the inverse delta time and set
+        // the latest position
+        enemy.position.add(enemy.velocity);
+        enemy.velocity.scl(1 / deltaTime);
+
+        // Apply damping to the velocity on the x-axis so we don't
+        // walk infinitely once a key was pressed
+        enemy.velocity.x *= enemy.DAMPING;
+    }
+
+
     private void koalaMovement() {
         // check input and apply to velocity & state
         // also check for double jump
@@ -285,6 +389,31 @@ public class SuperKoalio extends ApplicationAdapter {
         }
     }
 
+    private void moveEnemy(Enemy enemy) {
+
+        if (enemy.facesRight) {
+            enemy.velocity.x = enemy.MAX_VELOCITY;
+            enemy.facesRight = true;
+        } else {
+            enemy.velocity.x = -enemy.MAX_VELOCITY;
+            enemy.facesRight = false;
+        }
+
+        // apply gravity if we are falling
+        enemy.velocity.add(0, GRAVITY);
+
+        // clamp the velocity to the maximum, x-axis only
+        enemy.velocity.x = MathUtils.clamp(enemy.velocity.x,
+                -enemy.MAX_VELOCITY, enemy.MAX_VELOCITY);
+
+        // If the velocity is < 1, set it to 0 and set state to Standing
+        if (Math.abs(enemy.velocity.x) < 1) {
+            enemy.velocity.x = 0;
+        }
+
+    }
+
+
     private boolean isTouched(float startX, float endX) {
         // Check for touch inputs between startX and endX
         // startX/endX are given between 0 (left edge of the screen) and 1 (right edge of the screen)
@@ -296,6 +425,7 @@ public class SuperKoalio extends ApplicationAdapter {
         }
         return false;
     }
+
 
     private void getTiles(int startX, int startY, int endX, int endY, Array<Rectangle> tiles) {
         TiledMapTileLayer layerWalls = (TiledMapTileLayer) map.getLayers().get("breakable");
@@ -349,25 +479,19 @@ public class SuperKoalio extends ApplicationAdapter {
         batch.end();
     }
 
-    private void renderDebug() {
-        debugRenderer.setProjectionMatrix(camera.combined);
-        debugRenderer.begin(ShapeType.Line);
+    private void renderEnemy(Enemy enemy) {
+        Batch batch = renderer.getBatch();
+        enemy.stateTime += Gdx.graphics.getDeltaTime();
 
-        debugRenderer.setColor(Color.RED);
-        debugRenderer.rect(koala.position.x, koala.position.y, Koala.WIDTH, Koala.HEIGHT);
+        batch.begin();
 
-        debugRenderer.setColor(Color.YELLOW);
-        TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get("walls");
-        for (int y = 0; y <= layer.getHeight(); y++) {
-            for (int x = 0; x <= layer.getWidth(); x++) {
-                Cell cell = layer.getCell(x, y);
-                if (cell != null) {
-                    if (camera.frustum.boundsInFrustum(x + 0.5f, y + 0.5f, 0, 1, 1, 0))
-                        debugRenderer.rect(x, y, 1, 1);
-                }
-            }
+        if (enemy.facesRight) {
+            batch.draw(enemyWalk.getKeyFrame(enemy.stateTime, true), enemy.position.x, enemy.position.y, enemy.WIDTH, enemy.HEIGHT);
+        } else {
+            batch.draw(enemyWalk.getKeyFrame(enemy.stateTime, true), enemy.position.x + enemy.WIDTH, enemy.position.y, -enemy.WIDTH, enemy.HEIGHT);
         }
-        debugRenderer.end();
+
+        batch.end();
     }
 
     @Override
