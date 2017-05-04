@@ -52,7 +52,6 @@ public class SuperKoalio extends ApplicationAdapter {
     private TiledMap map;
     private OrthogonalTiledMapRenderer renderer;
     private OrthographicCamera camera;
-    private Texture koalaTexture;
     private Animation<TextureRegion> stand;
     private Animation<TextureRegion> walk;
     private Animation<TextureRegion> jump;
@@ -67,16 +66,11 @@ public class SuperKoalio extends ApplicationAdapter {
 
     private static final float GRAVITY = -2.5f;
 
-    private boolean debug = false;
-    private ShapeRenderer debugRenderer;
-
-    private Texture enemyTexture;
     private Animation<TextureRegion> enemyWalk;
-    private float startTime;
     private Enemy enemy1;
     private Enemy enemy2;
 
-    public Enemy initEnemy(int x, int y) {
+    private Enemy initEnemy(int x, int y) {
         TextureAtlas textureAtlas = new TextureAtlas("assets/data/alienBlue.atlas");
         TextureRegion[] textureRegions = new TextureRegion[2];
         textureRegions[0] = textureAtlas.findRegion("alienBlue_walk1");
@@ -92,12 +86,14 @@ public class SuperKoalio extends ApplicationAdapter {
         enemy.position.set(x, y);
         enemy.stateTime = 0;
 
+        enemy.setBounds(enemy.WIDTH, enemy.HEIGHT);
+
         return enemy;
     }
 
     private Koala initKoala() {
         // load the koala frames, split them, and assign them to Animations
-        koalaTexture = new Texture("assets/data/koalio.png");
+        Texture koalaTexture = new Texture("assets/data/koalio.png");
         TextureRegion[] regions = TextureRegion.split(koalaTexture, 18, 26)[0];
         stand = new Animation(0, regions[0]);
         jump = new Animation(0, regions[1]);
@@ -112,7 +108,8 @@ public class SuperKoalio extends ApplicationAdapter {
 
         // create the Koala we want to move around the world
         Koala koala = new Koala();
-        koala.position.set(20, 20);
+        koala.position.set(30, 5);
+        koala.setBounds(Koala.WIDTH, Koala.HEIGHT);
         return koala;
     }
 
@@ -135,7 +132,6 @@ public class SuperKoalio extends ApplicationAdapter {
 
 
 
-        debugRenderer = new ShapeRenderer();
     }
 
     @Override
@@ -260,6 +256,9 @@ public class SuperKoalio extends ApplicationAdapter {
         // Apply damping to the velocity on the x-axis so we don't
         // walk infinitely once a key was pressed
         koala.velocity.x *= Koala.DAMPING;
+
+        //update its bounds
+        koala.updateBounds();
     }
 
     private void updateEnemy(Enemy enemy, float deltaTime) {
@@ -269,6 +268,12 @@ public class SuperKoalio extends ApplicationAdapter {
             deltaTime = 0.1f;
 
         enemy.stateTime += deltaTime;
+
+
+        // reset the game if koala collides with an enemy
+        if (enemy.getBounds().overlaps(koala.getBounds())) {
+            create();
+        }
 
         // enemyMovement
         moveEnemy(enemy);
@@ -327,6 +332,9 @@ public class SuperKoalio extends ApplicationAdapter {
         // Apply damping to the velocity on the x-axis so we don't
         // walk infinitely once a key was pressed
         enemy.velocity.x *= enemy.DAMPING;
+
+        // update its bounds
+        enemy.updateBounds();
     }
 
 
@@ -366,9 +374,6 @@ public class SuperKoalio extends ApplicationAdapter {
             if (koala.grounded) koala.state = Koala.State.Walking;
             koala.facesRight = true;
         }
-
-        if (Gdx.input.isKeyJustPressed(Keys.B))
-            debug = !debug;
 
         // apply gravity if we are falling
         koala.velocity.add(0, GRAVITY);
