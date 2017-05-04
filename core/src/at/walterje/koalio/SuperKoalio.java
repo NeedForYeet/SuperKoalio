@@ -527,7 +527,6 @@ public class SuperKoalio extends ApplicationAdapter {
         if (Math.abs(enemy.velocity.x) < 1) {
             enemy.velocity.x = 0;
         }
-
     }
 
 
