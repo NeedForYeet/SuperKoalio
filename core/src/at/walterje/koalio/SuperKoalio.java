@@ -115,7 +115,7 @@ public class SuperKoalio extends ApplicationAdapter {
 
         // create the Koala we want to move around the world
         Koala koala = new Koala();
-        koala.position.set(200, 20);
+        koala.position.set(20, 20);
         koala.setBounds(Koala.WIDTH, Koala.HEIGHT);
         return koala;
     }
@@ -191,7 +191,7 @@ public class SuperKoalio extends ApplicationAdapter {
         updateEnemy(enemy3, deltaTime);
         updateEnemy(enemy4, deltaTime);
 
-        updateBullets(deltaTime);
+        renderBullet(deltaTime);
         renderBullets();
 
         renderEnemy(enemy1);
@@ -213,7 +213,7 @@ public class SuperKoalio extends ApplicationAdapter {
         batch.end();
     }
 
-    private void updateBullets(float deltaTime) {
+    private void renderBullet(float deltaTime) {
         if (deltaTime == 0) return;
 
         if (deltaTime > 0.1f)
@@ -223,8 +223,8 @@ public class SuperKoalio extends ApplicationAdapter {
         while (iterator.hasNext()) {
             Bullet bullet = iterator.next();
 
-            // check for out of bounds
-            if (bullet.position.x < 0 || bullet.position.x > 200) {
+            // check for out of bounds and remove
+            if (bullet.position.x < 0 || bullet.position.x > 250) {
                 iterator.remove();
             }
 
