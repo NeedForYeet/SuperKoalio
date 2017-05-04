@@ -131,8 +131,20 @@ public class SuperKoalio extends ApplicationAdapter {
         // render the koala
         renderKoala(deltaTime);
 
+        checkBelowGround();
+
         // render debug rectangles
         if (debug) renderDebug();
+    }
+
+    /**
+     * Check if Koala is below the ground.
+     */
+    private void checkBelowGround() {
+        if (koala.position.y < -10) {
+            System.out.println("Koala Died");
+            create();
+        }
     }
 
     private void updateKoala(float deltaTime) {
@@ -191,7 +203,7 @@ public class SuperKoalio extends ApplicationAdapter {
                 if (koala.velocity.y > 0) {
                     koala.position.y = tile.y - Koala.HEIGHT;
                     // we hit a block jumping upwards, let's destroy it!
-                    TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get("walls");
+                    TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get("breakable");
                     layer.setCell((int) tile.x, (int) tile.y, null);
                 } else {
                     koala.position.y = tile.y + tile.height;
@@ -217,7 +229,7 @@ public class SuperKoalio extends ApplicationAdapter {
     private void koalaMovement() {
         // check input and apply to velocity & state
         // also check for double jump
-        if ((Gdx.input.isKeyJustPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.jumpsRemaining > 0) {
+        if ((Gdx.input.isKeyJustPressed(Keys.UP) || Gdx.input.isKeyJustPressed(Keys.SPACE) || isTouched(0.5f, 1)) && koala.jumpsRemaining > 0) {
             koala.velocity.y = Koala.JUMP_VELOCITY;
             koala.state = Koala.State.Jumping;
             koala.grounded = false;
@@ -229,12 +241,15 @@ public class SuperKoalio extends ApplicationAdapter {
             koala.jumpsRemaining = 2;
         }
 
-        // shift to sprint
+        // shift to sprint, ctrl to sneak
         if (Gdx.input.isKeyPressed(Keys.SHIFT_LEFT)) {
             Koala.MAX_VELOCITY = 30;
+        } else if (Gdx.input.isKeyPressed(Keys.CONTROL_LEFT)) {
+            Koala.MAX_VELOCITY = 5;
         } else {
             Koala.MAX_VELOCITY = 10;
         }
+
 
         if (Gdx.input.isKeyPressed(Keys.LEFT) || Gdx.input.isKeyPressed(Keys.A) || isTouched(0, 0.25f)) {
             koala.velocity.x = -Koala.MAX_VELOCITY;
@@ -263,6 +278,11 @@ public class SuperKoalio extends ApplicationAdapter {
             koala.velocity.x = 0;
             if (koala.grounded) koala.state = Koala.State.Standing;
         }
+
+        // Reset game if R is pressed
+        if (Gdx.input.isKeyJustPressed(Keys.R)) {
+            create();
+        }
     }
 
     private boolean isTouched(float startX, float endX) {
@@ -278,7 +298,7 @@ public class SuperKoalio extends ApplicationAdapter {
     }
 
     private void getTiles(int startX, int startY, int endX, int endY, Array<Rectangle> tiles) {
-        TiledMapTileLayer layerWalls = (TiledMapTileLayer) map.getLayers().get("walls");
+        TiledMapTileLayer layerWalls = (TiledMapTileLayer) map.getLayers().get("breakable");
         TiledMapTileLayer layerUnbreakable = (TiledMapTileLayer) map.getLayers().get("unbreakable");
         rectPool.freeAll(tiles);
         tiles.clear();
