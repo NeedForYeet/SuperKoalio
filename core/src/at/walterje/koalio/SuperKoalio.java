@@ -72,6 +72,7 @@ public class SuperKoalio extends ApplicationAdapter {
     private Enemy enemy3;
     private Enemy enemy4;
     private Texture bulletTexture;
+    private Texture ghostTexture;
 
 
     private Array<Bullet> activeBullets;
@@ -114,7 +115,7 @@ public class SuperKoalio extends ApplicationAdapter {
 
         // create the Koala we want to move around the world
         Koala koala = new Koala();
-        koala.position.set(20, 20);
+        koala.position.set(200, 20);
         koala.setBounds(Koala.WIDTH, Koala.HEIGHT);
         return koala;
     }
@@ -122,6 +123,7 @@ public class SuperKoalio extends ApplicationAdapter {
     @Override
     public void create() {
         bulletTexture = new Texture("assets/data/bulletTexture.png");
+        ghostTexture = new Texture("assets/data/ghost.png");
 
         enemy1 = initEnemy(30, 5);
         enemy2 = initEnemy(45, 5);
@@ -142,6 +144,19 @@ public class SuperKoalio extends ApplicationAdapter {
         camera.update();
 
 
+    }
+
+    private void updateGhost() {
+        Batch batch = renderer.getBatch();
+        Rectangle rectangle = new Rectangle(206, 2, 5, 5);
+        batch.begin();
+        batch.draw(ghostTexture, 206, 2, 5, 5);
+
+        if (rectangle.overlaps(koala.getBounds())) {
+            create();
+        }
+
+        batch.end();
     }
 
     @Override
@@ -183,6 +198,9 @@ public class SuperKoalio extends ApplicationAdapter {
         renderEnemy(enemy2);
         renderEnemy(enemy3);
         renderEnemy(enemy4);
+
+        updateGhost();
+
     }
 
     private void renderBullets() {

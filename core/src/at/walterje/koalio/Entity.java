@@ -12,7 +12,7 @@ public class Entity {
     final Vector2 velocity = new Vector2();
     boolean facesRight = true;
     private Rectangle bounds;
-    float stateTime = 0;
+    float DAMPING = 0.87f;
 
 
     public void setBounds(float width, float height) {

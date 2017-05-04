@@ -12,15 +12,12 @@ public class Koala extends Entity{
         static float JUMP_VELOCITY = 40f;
         static float DAMPING = 0.87f;
 
-        int jumpsRemaining = 2;
-
         enum State {
             Standing, Walking, Jumping
         }
 
-
         State state = State.Walking;
         float stateTime = 0;
         boolean grounded = false;
-
+        int jumpsRemaining = 2;
 }
