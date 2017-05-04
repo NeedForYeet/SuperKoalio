@@ -69,6 +69,8 @@ public class SuperKoalio extends ApplicationAdapter {
     private Animation<TextureRegion> enemyWalk;
     private Enemy enemy1;
     private Enemy enemy2;
+    private Enemy enemy3;
+    private Enemy enemy4;
 
     private Enemy initEnemy(int x, int y) {
         TextureAtlas textureAtlas = new TextureAtlas("assets/data/alienBlue.atlas");
@@ -80,8 +82,8 @@ public class SuperKoalio extends ApplicationAdapter {
 
         Enemy enemy = new Enemy();
 
-        enemy.WIDTH = 1 / 16f * 50;
-        enemy.HEIGHT = 1 / 16f * 50;
+        enemy.WIDTH = 1 / 16f * 35;
+        enemy.HEIGHT = 1 / 16f * 35;
 
         enemy.position.set(x, y);
         enemy.stateTime = 0;
@@ -108,7 +110,7 @@ public class SuperKoalio extends ApplicationAdapter {
 
         // create the Koala we want to move around the world
         Koala koala = new Koala();
-        koala.position.set(30, 5);
+        koala.position.set(20, 20);
         koala.setBounds(Koala.WIDTH, Koala.HEIGHT);
         return koala;
     }
@@ -118,6 +120,8 @@ public class SuperKoalio extends ApplicationAdapter {
 
         enemy1 = initEnemy(30, 5);
         enemy2 = initEnemy(45, 5);
+        enemy3 = initEnemy(122, 3);
+        enemy4 = initEnemy(175, 3);
 
         koala = initKoala();
 
@@ -163,9 +167,13 @@ public class SuperKoalio extends ApplicationAdapter {
         // update and render enemies
         updateEnemy(enemy1, deltaTime);
         updateEnemy(enemy2, deltaTime);
+        updateEnemy(enemy3, deltaTime);
+        updateEnemy(enemy4, deltaTime);
 
         renderEnemy(enemy1);
         renderEnemy(enemy2);
+        renderEnemy(enemy3);
+        renderEnemy(enemy4);
     }
 
     /**
